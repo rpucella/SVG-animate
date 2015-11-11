@@ -1,7 +1,4 @@
 
-
-
-
 is there a way to associate an animation with an element?
 how do we lauch the anim?  element.animate()?
 
@@ -37,3 +34,14 @@ over(S1,S2,S3,S4,...)   <- in parallel
 scale(ELT,S)
 
 a -> 10
+
+
+An interesting behavior to toss into the mix, of course, is a good ol'
+D3 transition, which is a transition with a given duration that can
+fit in nicely within a larger behavior. It does mean we might need to
+figure out how to notice the "end" of a behavior. Or maybe there's an
+implicit "duration" in use?
+
+Make sure we can do recursive thresholds.
+
+Rename 'threshold' to 'then'?

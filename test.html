@@ -150,15 +150,11 @@ function elt (id) {
 }
 
 function threshold (s1,thres,s2) {
-    var start = null;
     return function(t) { 
-	if (!start) { 
-	    start = t;
-	}
-	if (t-start<thres) {
+	if (t<thres) {
 	    return s1(t);
 	} else {
-	    return s2(t);
+	    return s2(t-thres);
 	}
     }
 }
@@ -177,17 +173,18 @@ function over () {
 }
 
 function delay (d,s) { 
-    var start = null;
     return function(t) { 
-	if (!start) { 
-	    start = t;
+	if (t < d) {
+	    return;
 	}
-	if (t-start >= d) {
-	    return s(t);
-	}
+	return s(t-d);
     }
 }
 
+
+// invariant: 
+//  time is always local to a behavior
+//  behavior always starts @ t = 0
 
 function run () { 
 
@@ -204,7 +201,7 @@ function run () {
 
     var t = over(delay(1000,circR1),rotR2);
 
-    animate(t,10000);
+    animate(t,20000);
 
 }
       
