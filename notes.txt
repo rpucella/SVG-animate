@@ -1,6 +1,17 @@
 
+
+
+
 is there a way to associate an animation with an element?
 how do we lauch the anim?  element.animate()?
+
+But we want to go beyond: we want to animate groups of elements as
+one, so we should be able to define behaviors independently of the
+underlying element. 
+
+Alternately, use combinator algebra to pull the "over" (which is the
+one thing that can use different elements?) up at top-level, and then
+we can push the various per-element animations into each element.
 
 object-oriented syntax for animations?
 
