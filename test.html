@@ -158,6 +158,19 @@ function threshold (s1,thres,s2) {
 	}
     }
 }
+
+function over () {
+    var args = [];
+    for (var i=0; i<arguments.length; i++) {
+	args.push(arguments[i]);
+    }
+    
+    return function(t) { 
+	var results = [];
+	args.forEach(function(s,i) { results[i]=s(t); });
+	return results;
+    }
+}
     
 
 function run () { 
@@ -167,9 +180,11 @@ function run () {
     var rotR1 = faster(0.50,rot(elt("r1"),deg,250,250));
     var rotR2 = faster(0.30,rot(elt("r2"),mult(-1,deg),750,250));
     var r = threshold(rotR1,5000,rotR2);
-    var circR1 = trans(r,faster(0.01,wiggle(100)),faster(0.01,waggle(100)));
+    var circR1 = trans(rotR1,faster(0.01,wiggle(100)),faster(0.01,waggle(100)));
 
-    animate(circR1,10000);
+    var t = over(circR1,rotR2);
+
+    animate(t,10000);
 
 }
       
