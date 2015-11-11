@@ -79,7 +79,7 @@ function apply (f,s) {
 
 var animId = 0;
 
-function animate (s) { 
+function animate (s,duration) { 
 
     if (animId !== 0) {
 	cancelAnimationFrame(animId);
@@ -89,13 +89,28 @@ function animate (s) {
     var start = performance.now();
     var now;
 
+    var goWithDuration = function() { 
+	now = performance.now()-start;
+	if (now < duration) { 
+	    s(now);
+	    animId = requestAnimationFrame(goWithDuration);
+	} else {
+	    console.log("BUSTED!");
+	}
+    }
+
     var go = function() { 
 	now = performance.now()-start;
 	s(now);
 	animId = requestAnimationFrame(go);
     }
 
-    go();
+    if (duration) { 
+	goWithDuration();
+    } else {
+	go();
+    }
+
 }
 
 function stop () {
@@ -111,6 +126,7 @@ function print (s) {
 
 var test = print(apply(function(x) { return x*2;},time));
 var deg = apply(function(x) { return x % 360; },time);
+
 
 function rot (node,s) { 
     return function(t) { rotate(lift(node)(t),lift(s)(t),250,250); return lift(node)(t); }
@@ -132,6 +148,11 @@ function waggle (amp) {
 function run () { 
 
     console.log("Ready to animate");
+
+    var rotR1 = faster(0.50,rot(r1,deg));
+    var circR1 = trans(rotR1,faster(0.01,wiggle(100)),faster(0.01,waggle(100)));
+
+    animate(circR1,10000);
 
 }
       
