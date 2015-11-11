@@ -1,0 +1,28 @@
+
+is there a way to associate an animation with an element?
+how do we lauch the anim?  element.animate()?
+
+object-oriented syntax for animations?
+
+note: rotate(r,10) --> rotates by 10
+
+rotate(r,S)  --> rotates by S, but S time-varies
+
+  rotate(r).angle(10)
+  delay(r).time(10)
+
+How do we animate two figures at the same time?
+
+element(r)  <-- grabs it
+returns a stream of that element
+threshold(s1,t,s2)  <-  s1 until t then s2
+
+delay(ms,S)
+
+select(B,S1,S2)   <- if time-varying B is true then S1 else S2
+
+over(S1,S2,S3,S4,...)   <- in parallel
+
+scale(ELT,S)
+
+a -> 10
