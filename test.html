@@ -5,13 +5,9 @@
 
     <script>
       
-window.addEventListener("load",run);
 
-/*
-function time () { 
-  return function(t) { return t; }
-}
-*/
+
+window.addEventListener("load",run);
 
 function time (t) { return t; }
 
@@ -122,13 +118,24 @@ function print (s) {
 var test = print(apply(function(x) { return x*2;},time));
 var deg = apply(function(x) { return x % 360; },time);
 
+function undef (x) { 
+    return typeof x === "undefined";
+}
 
 function rot (node,s,cx,cy) { 
-    return function(t) { rotate(lift(node)(t),lift(s)(t),cx,cy); return lift(node)(t); }
+    return function(t) { 
+	var n = lift(node)(t);
+	if (undef(cx)) {
+	    cx = n.x;
+	}
+	if (undef(cy)) { 
+	    cy = n.y;
+	}
+	rotate(n.elt,lift(s)(t),cx,cy); return n; }
 }
 
 function trans (node,x,y) { 
-    return function(t) { translate(lift(node)(t),lift(x)(t),lift(y)(t)); return lift(node)(t);}
+    return function(t) { translate(lift(node)(t).elt,lift(x)(t),lift(y)(t)); return lift(node)(t);}
 }
 
 function wiggle (t) { 
@@ -139,9 +146,9 @@ function waggle (t) {
     return Math.cos(t);
 }
 
-function elt (id) { 
+function elt (id,orig_x,orig_y) { 
     var e = document.getElementById(id);
-    return function(t) { return e; }
+    return function(t) { return {elt:e, x:orig_x, y:orig_y};  }
 }
 
 function threshold (s1,thres,s2) {
@@ -154,6 +161,7 @@ function threshold (s1,thres,s2) {
     }
 }
 
+// produces an array of results
 function over () {
     var args = [];
     for (var i=0; i<arguments.length; i++) {
@@ -187,6 +195,10 @@ function rampTo (n,d) {
 }
 	
 
+function spin (e,s) {
+    return faster(s,rot(e,deg));
+}
+
 // invariant: 
 //  time is always local to a behavior
 //  behavior always starts @ t = 0
@@ -195,20 +207,29 @@ function run () {
 
     console.log("Ready to animate");
 
-    var rotR1 = faster(0.50,rot(elt("r1"),deg,250,250));
-    var rotR2 = faster(0.30,rot(elt("r2"),mult(-1,deg),750,250));
+    var rotR1 = faster(2,rot(elt("r1",200,200),deg));
+    var rotR2 = faster(0.30,rot(elt("r2",750,250),mult(-1,deg)));
     var r = threshold(rotR1,5000,rotR2);
     var circR1 = threshold(trans(rotR1,
-				 mult(rampTo(100,1000),faster(0.01,wiggle)),
-				 mult(rampTo(100,1000),faster(0.01,waggle))),
+				 mult(rampTo(100,1000),faster(0.001,wiggle)),
+				 mult(rampTo(100,1000),faster(0.001,waggle))),
 			   5000,
 			   trans(rotR1,
-				 faster(add(0.01,rampTo(0.005,1000)),mult(100,wiggle)),
-				 faster(add(0.01,rampTo(0.005,1000)),mult(100,waggle))));
+				 faster(add(0.001,rampTo(0.001,1000)),mult(100,wiggle)),
+				 faster(add(0.001,rampTo(0.001,1000)),mult(100,waggle))));
 
     var t = over(delay(1000,circR1),rotR2);
 
-    animate(t)  //,20000);
+    // external rotation does not work.
+    // probably because the outer 'rot' clobbers the internal 'rot'...
+
+    var orbit = rot(trans(spin(elt("r3",500,250),0.5),
+			  faster(0.003,mult(400,wiggle)),
+			  faster(0.003,mult(150,waggle))),
+		    deg,
+		    500,250);
+
+    animate(orbit)  //,20000);
 
 }
       
@@ -218,6 +239,8 @@ function run () {
     <svg width="1000" height="500" style="border: 1px solid grey;">
         <rect id="r1" x="200" y="200" height="100" width="100" fill="red"></rect>
         <rect id="r2" x="700" y="200" height="100" width="100" fill="blue"></rect>
+        <rect id="r3" x="450" y="230" width="100" height="40" fill="green"></rect>
+
     </svg>
 
   </body>
