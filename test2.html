@@ -277,16 +277,17 @@ function run () {
 		   faster(0.005,deg),
 		   500,250));
 
-    var orbit = over(elt("c1",500,250),
-		     faster(0.01,trans(elt("c2",500,250),
-				      mult(50,wiggle),
-				      mult(30,waggle))));
+    var orbit1 = elt("c1",500,250);
+    var orbit2 = faster(0.01,trans(elt("c2",500,250),
+				   mult(25,wiggle),
+				   mult(60,waggle)));
 
-    t = over(t,trans(orbit,
-		     faster(0.005,mult(200,wiggle)),
-		     0));
-		  // faster(0.02,mult(-1,deg)),
-		 //  500,250));
+    var orbit = over(orbit1, orbit2);
+
+    var pendulum = function(x) { return trans(x,faster(0.002,mult(200,wiggle)),0); }
+
+    t = over(t,over(rot(pendulum(orbit1),faster(0.02,mult(-1,deg)),500,250),
+		    rot(pendulum(orbit2),faster(0.02,mult(-1,deg)),500,250)));
 
 
     animate(t) // ,6000);
@@ -301,8 +302,8 @@ function run () {
         <rect id="r2" x="700" y="200" height="100" width="100" fill="blue" />
         <rect id="r3" x="450" y="230" width="100" height="40" fill="green" />
 
-	<circle id="c1" cx="500" cy="250" r="20" fill="black" />
-	<circle id="c2" cx="500" cy="250" r="5" fill="grey" />
+	<circle id="c1" cx="500" cy="250" r="20" fill="grey" />
+	<circle id="c2" cx="500" cy="250" r="5" fill="black" />
     </svg>
 
   </body>
