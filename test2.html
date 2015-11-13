@@ -20,42 +20,6 @@ function lift (v) {
 }
 
 
-// non-streamed
-function getRotationTranslation (node) { 
-    var s = d3.select(node);
-    var r = +s.attr("data-rotation");
-    var rx = +s.attr("data-rotation-x");
-    var ry = +s.attr("data-rotation-y");
-    var tx = +s.attr("data-translation-x");
-    var ty = +s.attr("data-translation-y");
-    return {r: r?r:0, tx:tx?tx:0, ty:ty?ty:0,rx:rx?rx:0, ry:ry?ry:0};
-}
-
-function setRotationTranslation (node,r,tx,ty,rx,ry) { 
-    var s = d3.select(node);
-    s.attr("data-rotation",r);
-    s.attr("data-rotation-x",rx);
-    s.attr("data-rotation-y",ry);
-    s.attr("data-translation-x",tx);
-    s.attr("data-translation-y",ty);
-    s.attr("transform","translate("+tx+","+ty+") rotate("+r+","+rx+","+ry+")");
-}
-
-
-/*
-function rotate (node,deg,rx,ry) {
-    var data = getRotationTranslation(node);
-    var s = d3.select(node);
-    setRotationTranslation(node,deg,data.tx,data.ty,rx,ry);
-}
-
-
-function translate (node,x,y) {
-    var data = getRotationTranslation(node);
-    var s = d3.select(node);
-    setRotationTranslation(node,data.r,x,y,data.rx,data.ry);
-}
-*/
 
 /*
  * Format function
@@ -78,6 +42,18 @@ function translate (node,x,y) {
     }
 })();
 
+
+
+//
+// TODOs:
+// 
+// - record initial transform so that we can keep it around even 
+//   after we wipe everything out because of a new tag
+// - make sure rotate/translate and later scale can handle
+//   (recursive) arrays of nodes as well
+// - rename rot/trans to rotate/translate
+// - implement scaling
+//
 
 
 function rotate (node,deg,rx,ry) {
@@ -301,6 +277,17 @@ function run () {
 		   faster(0.005,deg),
 		   500,250));
 
+    var orbit = over(elt("c1",500,250),
+		     faster(0.01,trans(elt("c2",500,250),
+				      mult(50,wiggle),
+				      mult(30,waggle))));
+
+    t = over(t,trans(orbit,
+		     faster(0.005,mult(200,wiggle)),
+		     0));
+		  // faster(0.02,mult(-1,deg)),
+		 //  500,250));
+
 
     animate(t) // ,6000);
 
@@ -310,10 +297,12 @@ function run () {
   </head>
   <body>
     <svg width="1000" height="500" style="border: 1px solid grey;">
-        <rect id="r1" x="200" y="200" height="100" width="100" fill="red"></rect>
-        <rect id="r2" x="700" y="200" height="100" width="100" fill="blue"></rect>
-        <rect id="r3" x="450" y="230" width="100" height="40" fill="green"></rect>
+        <rect id="r1" x="200" y="200" height="100" width="100" fill="red" />
+        <rect id="r2" x="700" y="200" height="100" width="100" fill="blue" />
+        <rect id="r3" x="450" y="230" width="100" height="40" fill="green" />
 
+	<circle id="c1" cx="500" cy="250" r="20" fill="black" />
+	<circle id="c2" cx="500" cy="250" r="5" fill="grey" />
     </svg>
 
   </body>
