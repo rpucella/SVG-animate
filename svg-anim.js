@@ -1,13 +1,21 @@
-<html>
-  <head>
 
-    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+/*
+ * SVG-animate
+ *
+ * FRAN-style animations for SVG in Javascript
+ *
+ */
 
-    <script>
-      
 
+/* 
+   TODO:
 
-window.addEventListener("load",setup_and_run);
+   - close up in a module
+   - record initial transform so that we can keep it around even 
+     after we wipe everything out because of a new tag
+   - implement scaling
+
+*/
 
 
 function mkBehavior (type,stream) {
@@ -18,13 +26,11 @@ function isBehavior (b) {
     return (typeof b === "object" && "type" in b && "stream" in b);
 }
 
+
 // types: scalar, array
 //    
 
 var time = mkBehavior("scalar",function(t) { return t; });
-
-
-// function time (t) { return t; }
 
 
 function faster (r,s) {
@@ -34,8 +40,13 @@ function faster (r,s) {
 }
 
 
+function slower (r,s) { 
+    return faster(1/r,s);
+}
+
+
 // this will fail if 'v' is an array, but that's okay because that would be
-// cheating (faking an overalp with an array of scalars?)
+// cheating (faking an overlay with an array of scalars?)
 
 function lift (v) { 
   return isBehavior(v) ? v : mkBehavior("scalar",function(t) { return v; });
@@ -46,7 +57,7 @@ function lift (v) {
 /*
  * Format function
  *
- * Use %as placeholder
+ * Use % as placeholder
  *
  */
 
@@ -66,33 +77,6 @@ function lift (v) {
 
 
 
-//
-// TODOs:
-// 
-// - record initial transform so that we can keep it around even 
-//   after we wipe everything out because of a new tag
-// - make sure rotate/translate and later scale can handle
-//   (recursive) arrays of nodes as well
-// - rename rot/trans to rotate/translate
-// - implement scaling
-//
-
-
-function rotate_nodes (nodes,deg,rx,ry) {
-    nodes.forEach(function(node) {
-	var s = d3.select(node);
-	if (s.property("svg-animation-tag") != tag) {
-	    ///console.log("rotate - new tag",tag,"replacing",s.property("svg-animation-tag"));
-	    s.property("svg-animation-tag",tag);
-	    s.attr("transform","rotate(%,%,%)".fmt(deg,rx,ry));
-	} else {
-	    var t = s.attr("transform")
-	    ///console.log("rotate - existing tag",tag,"adding to",t);
-	    s.attr("transform","rotate(%,%,%) %".fmt(deg,rx,ry,t));
-	}
-    })
-}
-
 function rotate_node (node,deg,rx,ry) {
     ///console.log(node,deg,rx,ry);
     var s = d3.select(node);
@@ -107,22 +91,6 @@ function rotate_node (node,deg,rx,ry) {
     }
 }
 
-
-function translate_nodes (nodes,x,y) {
-    ///console.log("translate_nodes / nodes = ",nodes);
-    nodes.forEach(function(node) { 
-	var s = d3.select(node.elt);
-	if (+s.property("svg-animation-tag") !== tag) {
-	    s.property("svg-animation-tag",tag);
-	    ///console.log("translate - new tag",tag,"replacing",s.property("svg-animation-tag"));
-	    s.attr("transform","translate(%,%)".fmt(x,y));
-	} else {
-	    var t = s.attr("transform")
-	    ///console.log("transform - existing tag",tag,"adding to",t);
-	    s.attr("transform","translate(%,%) %".fmt(x,y,t));
-	}
-    })
-}
 
 function translate_node (node,x,y) {
     var s = d3.select(node);
@@ -155,10 +123,17 @@ function apply (f,s) {
     return mkBehavior("scalar",function(t) { return f(ls.stream(t)); });
 }
 
+
 var animId = 0;
 
 
 // DIRTY DIRTY HACK!
+// also, cannot have more than one animate call active at a time
+// there has to be a better way of doing this
+//
+// pass the current animation tag along with the time?
+//  the absolute time stamp might be useful anyway...
+
 var tag;
 
 function animate (s,duration) { 
@@ -212,12 +187,12 @@ function print (s) {
     return function(t) { console.log("@",t,"=",s.stream(t)); };
 }
 
-var test = print(apply(function(x) { return x*2;},time));
 var deg = apply(function(x) { return x % 360; },time);
 
 function undef (x) { 
     return typeof x === "undefined";
 }
+
 
 
 // cx and cy should themselves be behaviors as well
@@ -244,9 +219,6 @@ function rotate (nodes,s,cx,cy) {
 		      });
 }
 
-// faster to skip the maps and construct this from scratch
-// with a one-node translate_node?
-//  (similar for rotate)
 
 function translate (nodes,x,y) { 
     var lnodes = lift(nodes);
@@ -289,8 +261,6 @@ function threshold (s1,thres,s2) {
 }
 
 
-// invariant: every behavior is a function that returns a value of the 
-// appropriate shape (based on the constructor's inputs)
 
 function overlay () {
     var args = [];
@@ -304,16 +274,7 @@ function overlay () {
     
     temp =  mkBehavior("array",
 		      function(t) { 
-			  ///console.log("OVERLAY");
-			  ///console.log("args=",args);
-			  ///console.log("args[0].stream(t)=",args[0].stream(t));
-			  var result = args.map(function(s) { return s.stream(t); });
-			  ///console.log(result);
-			  return result;
-			  /*	var results = [];
-	args.forEach(function(s,i) { results[i]=s(t); });
-	///console.log(results);
-	return results; */
+			  return  args.map(function(s) { return s.stream(t); });
 		      });
 
     return temp;
@@ -332,6 +293,8 @@ function delay (d,s) {
 }
 
 
+// generalize this
+
 function rampTo (n,d) { 
     return mkBehavior("scalar",
 		      function(t) { 
@@ -348,97 +311,10 @@ function spin (e,s) {
 }
 
 
-function setup_and_run () { 
-    loadExternalSVG("smiley.svg","target_smiley",run);
-}
 
 // invariant: 
 //  time is always local to a behavior
 //  behavior always starts @ t = 0
-
-function run () { 
-
-    console.log("Ready to animate");
-
-/*    var rotR1 = faster(2,rotate(element("r1",200,200),deg)); */
-
-    var rotR2 = faster(0.30,rotate(element("r2",750,250),mult(-1,deg)));
-
-/*    var circR1 = threshold(translate(rotR1,
-				 mult(rampTo(100,1000),faster(0.001,wiggle)),
-				 mult(rampTo(100,1000),faster(0.001,waggle))),
-			   5000,
-			   translate(rotR1,
-				 faster(add(0.001,rampTo(0.001,1000)),mult(100,wiggle)),
-				 faster(add(0.001,rampTo(0.001,1000)),mult(100,waggle))));
-*/
-
-/*
-    var circR1 = translate(faster(0.3,rotate(element("r1",250,250),deg)),
-		       mult(rampTo(100,1000),faster(0.005,wiggle)),
-		       mult(rampTo(100,1000),faster(0.005,waggle)));
-
-    var t = overlay(delay(1000,circR1),rotR2);
-
-    t = overlay(t,rotate(translate(spin(element("r3",500,250),1),
-			 faster(0.003,mult(200,wiggle)),
-			 faster(0.003,mult(50,waggle))),
-		   faster(0.005,deg),
-		   500,250));
-*/
-
-    var orbit1 = element("c1",500,250);
-    var orbit2 = faster(0.01,translate(element("c2",500,250),
-				       mult(25,wiggle),
-				       mult(60,waggle)));
-
-//    var orbit = overlay(orbit1, orbit2);
-
-    var pendulum = function(x) { return translate(x,faster(0.002,mult(200,wiggle)),0); }
-
-    t = overlay(rotate(pendulum(orbit1),faster(0.02,mult(-1,deg)),500,250),
-		rotate(pendulum(orbit2),faster(0.02,mult(-1,deg)),500,250));
-
-//    t = rotate(pendulum(overlay(orbit1,orbit2)),
-//	       faster(0.02,mult(-1,deg)),
-//	       500,250);
-
-//    t = pendulum(overlay(orbit1,orbit2));
-
-//    t = pendulum(orbit2); // overlay(orbit1,orbit2);
-			
-
-//    t = pendulum(element("c1",500,250));
-//    t = rotate(element("r3",500,250),faster(0.5,deg));
-
-//    t = pendulum(overlay(t,orbit2))
-
-//    t = pendulum(overlay(orbit1,orbit2));
-
-    // this doesn't work as advertised
-    // probably because the center of rotation is affected - maybe?
-    t = overlay(pendulum(rotate(pendulum(overlay(orbit1,
-						 orbit2)),
-				faster(0.02,mult(-1,deg)),
-				500,250)),
-				//add(500,faster(0.002,mult(200,wiggle))),250)),
-		pendulum(element("c3",500,250)));
-
-    // works
-    t = overlay(pendulum(rotate(faster(10,pendulum(element("c1",500,250))),
-				faster(0.03,deg),
-				500,250)),
-		pendulum(element("c3",500,250)));
-
-    t = faster(0.1,pendulum(overlay(rotate(faster(10,pendulum(element("smiley",500,250))),
-				faster(0.3,deg),
-				500,250),
-				    element("c3",10,10))));
-				   
-    
-    animate(t)  // ,6000);
-}
-
 
 
 function loadExternalSVG (file,target_id,f) { 
@@ -452,21 +328,3 @@ function loadExternalSVG (file,target_id,f) {
 }
 
 
-
-      
-    </script>
-  </head>
-  <body>
-    <svg width="1000" height="500" style="border: 1px solid grey;">
-<!--        <rect id="r1" x="200" y="200" height="100" width="100" fill="red" />
-        <rect id="r2" x="700" y="200" height="100" width="100" fill="blue" />
-        <rect id="r3" x="450" y="230" width="100" height="40" fill="green" /> -->
-
-	<circle id="c1" cx="500" cy="250" r="20" fill="grey" />
-	<circle id="c2" cx="500" cy="250" r="5" fill="black" />
-	<circle id="c3" cx="500" cy="250" r="200" fill="none" stroke="blue" />
-        <g id="smiley"><g id="target_smiley" transform="translate(470,220) scale(3)"></g></g>
-    </svg>
-
-  </body>
-</html>

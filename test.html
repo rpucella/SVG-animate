@@ -2,245 +2,41 @@
   <head>
 
     <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <script src="svg-anim.js" charset="utf-8"></script>
 
     <script>
       
-
-
 window.addEventListener("load",run);
-
-function time (t) { return t; }
-
-function faster (r,s) {
-    return function (t) { return s(t * lift(r)(t)); };
-}
-
-function lift (v) { 
-  return typeof v === "function" ? v : function(t) { return v; };
-}
-
-
-// non-streamed
-function getRotationTranslation (node) { 
-    var s = d3.select(node);
-    var r = +s.attr("data-rotation");
-    var rx = +s.attr("data-rotation-x");
-    var ry = +s.attr("data-rotation-y");
-    var tx = +s.attr("data-translation-x");
-    var ty = +s.attr("data-translation-y");
-    return {r: r?r:0, tx:tx?tx:0, ty:ty?ty:0,rx:rx?rx:0, ry:ry?ry:0};
-}
-
-function setRotationTranslation (node,r,tx,ty,rx,ry) { 
-    var s = d3.select(node);
-    s.attr("data-rotation",r);
-    s.attr("data-rotation-x",rx);
-    s.attr("data-rotation-y",ry);
-    s.attr("data-translation-x",tx);
-    s.attr("data-translation-y",ty);
-    s.attr("transform","translate("+tx+","+ty+") rotate("+r+","+rx+","+ry+")");
-}
-
-
-function rotate (node,deg,rx,ry) {
-    var data = getRotationTranslation(node);
-    var s = d3.select(node);
-    setRotationTranslation(node,deg,data.tx,data.ty,rx,ry);
-}
-
-
-function translate (node,x,y) {
-    var data = getRotationTranslation(node);
-    var s = d3.select(node);
-    setRotationTranslation(node,data.r,x,y,data.rx,data.ry);
-}
-
-
-function add (s1,s2) { 
-  return function(t) { return lift(s1)(t) + lift(s2)(t); };
-}
-
-function mult (s1,s2) { 
-  return function(t) { return lift(s1)(t) * lift(s2)(t); };
-}
-
-function apply (f,s) {
-  return function(t) { return f(lift(s)(t)); }
-}
-
-var animId = 0;
-
-function animate (s,duration) { 
-
-    if (animId !== 0) {
-	cancelAnimationFrame(animId);
-	animId = 0;
-    }
-
-    var start = performance.now();
-    var now;
-
-    var goWithDuration = function() { 
-	now = performance.now()-start;
-	if (now < duration) { 
-	    s(now);
-	    animId = requestAnimationFrame(goWithDuration);
-	} else {
-	    console.log("BUSTED!");
-	}
-    }
-
-    var go = function() { 
-	now = performance.now()-start;
-	s(now);
-	animId = requestAnimationFrame(go);
-    }
-
-    if (duration) { 
-	goWithDuration();
-    } else {
-	go();
-    }
-
-}
-
-function stop () {
-    if (animId !== 0) {
-	cancelAnimationFrame(animId);
-	animId = 0;
-    }
-}
-
-function print (s) { 
-    return function(t) { console.log("@",t,"=",s(t)); };
-}
-
-var test = print(apply(function(x) { return x*2;},time));
-var deg = apply(function(x) { return x % 360; },time);
-
-function undef (x) { 
-    return typeof x === "undefined";
-}
-
-function rot (node,s,cx,cy) { 
-    return function(t) { 
-	var n = lift(node)(t);
-	if (undef(cx)) {
-	    cx = n.x;
-	}
-	if (undef(cy)) { 
-	    cy = n.y;
-	}
-	rotate(n.elt,lift(s)(t),cx,cy); return n; }
-}
-
-function trans (node,x,y) { 
-    return function(t) { translate(lift(node)(t).elt,lift(x)(t),lift(y)(t)); return lift(node)(t);}
-}
-
-function wiggle (t) { 
-    return Math.sin(t);
-}
-
-function waggle (t) { 
-    return Math.cos(t);
-}
-
-function elt (id,orig_x,orig_y) { 
-    var e = document.getElementById(id);
-    return function(t) { return {elt:e, x:orig_x, y:orig_y};  }
-}
-
-function threshold (s1,thres,s2) {
-    return function(t) { 
-	if (t<thres) {
-	    return s1(t);
-	} else {
-	    return s2(t-thres);
-	}
-    }
-}
-
-// produces an array of results
-function over () {
-    var args = [];
-    for (var i=0; i<arguments.length; i++) {
-	args.push(arguments[i]);
-    }
-    
-    return function(t) { 
-	var results = [];
-	args.forEach(function(s,i) { results[i]=s(t); });
-	return results;
-    }
-}
-
-function delay (d,s) { 
-    return function(t) { 
-	if (t < d) {
-	    return;
-	}
-	return s(t-d);
-    }
-}
-
-
-function rampTo (n,d) { 
-    return function(t) { 
-	if (t<d) { 
-	    return (n*t/d);
-	}
-	return n;
-    }
-}
-	
-
-function spin (e,s) {
-    return faster(s,rot(e,deg));
-}
-
-// invariant: 
-//  time is always local to a behavior
-//  behavior always starts @ t = 0
 
 function run () { 
 
     console.log("Ready to animate");
 
-    var rotR1 = faster(2,rot(elt("r1",200,200),deg));
-    var rotR2 = faster(0.30,rot(elt("r2",750,250),mult(-1,deg)));
-    var r = threshold(rotR1,5000,rotR2);
-    var circR1 = threshold(trans(rotR1,
-				 mult(rampTo(100,1000),faster(0.001,wiggle)),
-				 mult(rampTo(100,1000),faster(0.001,waggle))),
-			   5000,
-			   trans(rotR1,
-				 faster(add(0.001,rampTo(0.001,1000)),mult(100,wiggle)),
-				 faster(add(0.001,rampTo(0.001,1000)),mult(100,waggle))));
+    var rotR1 = faster(1,rotate(element("r1",200,200),deg));
+    var rotR2 = faster(0.30,rotate(element("r2",750,250),mult(-1,deg)));
 
-    var t = over(delay(1000,circR1),rotR2);
+    var circR1 = translate(rotR1,
+			   mult(rampTo(100,1000),faster(0.001,wiggle)),
+			   mult(rampTo(100,1000),faster(0.001,waggle)));
+    
+    var t = delay(1000,overlay(delay(1000,circR1),rotR2));
 
-    // external rotation does not work.
-    // probably because the outer 'rot' clobbers the internal 'rot'...
+    var orbit = delay(3000,translate(spin(element("r3",500,250),0.5),
+				     mult(rampTo(400,2000),faster(0.003,wiggle)),
+				     mult(rampTo(150,2000),faster(0.003,waggle))));
 
-    var orbit = rot(trans(spin(elt("r3",500,250),0.5),
-			  faster(0.003,mult(400,wiggle)),
-			  faster(0.003,mult(150,waggle))),
-		    deg,
-		    500,250);
-
-    animate(orbit)  //,20000);
+    animate(overlay(t,orbit));
 
 }
       
     </script>
   </head>
   <body>
-    <svg width="1000" height="500" style="border: 1px solid grey;">
+
+    <svg width="1000" height="500">
         <rect id="r1" x="200" y="200" height="100" width="100" fill="red"></rect>
         <rect id="r2" x="700" y="200" height="100" width="100" fill="blue"></rect>
         <rect id="r3" x="450" y="230" width="100" height="40" fill="green"></rect>
-
     </svg>
 
   </body>
