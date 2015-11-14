@@ -28,11 +28,17 @@ var time = mkBehavior("scalar",function(t) { return t; });
 
 
 function faster (r,s) {
-    return function (t) { return s(t * lift(r)(t)); };
+    var ls = lift(s);
+    var lr = lift(r);
+    return mkBehavior(ls.type,function (t) { return ls.stream(t * lr.stream(t)); });
 }
 
+
+// this will fail if 'v' is an array, but that's okay because that would be
+// cheating (faking an overalp with an array of scalars?)
+
 function lift (v) { 
-  return typeof v === "function" ? v : function(t) { return v; };
+  return isBehavior(v) ? v : mkBehavior("scalar",function(t) { return v; });
 }
 
 
@@ -88,6 +94,7 @@ function rotate_nodes (nodes,deg,rx,ry) {
 }
 
 function rotate_node (node,deg,rx,ry) {
+    ///console.log(node,deg,rx,ry);
     var s = d3.select(node);
     if (s.property("svg-animation-tag") != tag) {
 	///console.log("rotate - new tag",tag,"replacing",s.property("svg-animation-tag"));
@@ -102,7 +109,7 @@ function rotate_node (node,deg,rx,ry) {
 
 
 function translate_nodes (nodes,x,y) {
-    console.log("translate_nodes / nodes = ",nodes);
+    ///console.log("translate_nodes / nodes = ",nodes);
     nodes.forEach(function(node) { 
 	var s = d3.select(node.elt);
 	if (+s.property("svg-animation-tag") !== tag) {
@@ -117,17 +124,35 @@ function translate_nodes (nodes,x,y) {
     })
 }
 
+function translate_node (node,x,y) {
+    var s = d3.select(node);
+    if (+s.property("svg-animation-tag") !== tag) {
+	s.property("svg-animation-tag",tag);
+	///console.log("translate - new tag",tag,"replacing",s.property("svg-animation-tag"));
+	s.attr("transform","translate(%,%)".fmt(x,y));
+    } else {
+	var t = s.attr("transform")
+	///console.log("transform - existing tag",tag,"adding to",t);
+	s.attr("transform","translate(%,%) %".fmt(x,y,t));
+    }
+}
+
 
 function add (s1,s2) { 
-  return function(t) { return lift(s1)(t) + lift(s2)(t); };
+    var ls1 = lift(s1);
+    var ls2 = lift(s2);
+    return mkBehavior("scalar",function(t) { return ls1.stream(t) + ls2.stream(t); });
 }
 
 function mult (s1,s2) { 
-  return function(t) { return lift(s1)(t) * lift(s2)(t); };
+    var ls1 = lift(s1);
+    var ls2 = lift(s2);
+    return mkBehavior("scalar",function(t) { return ls1.stream(t) * ls2.stream(t); });
 }
 
 function apply (f,s) {
-  return function(t) { return f(lift(s)(t)); }
+    var ls = lift(s);
+    return mkBehavior("scalar",function(t) { return f(ls.stream(t)); });
 }
 
 var animId = 0;
@@ -153,7 +178,7 @@ function animate (s,duration) {
 	now = performance.now()-start;
 	tag = now;
 	if (now < duration) { 
-	    liftedS(now);
+	    liftedS.stream(now);
 	    animId = requestAnimationFrame(goWithDuration);
 	} else {
 	    console.log("BUSTED!");
@@ -164,7 +189,7 @@ function animate (s,duration) {
 	///console.log("--------------------");
 	now = performance.now()-start;
 	tag = now;
-	liftedS(now);
+	liftedS.stream(now);
 	animId = requestAnimationFrame(go);
     }
 
@@ -184,7 +209,7 @@ function stop () {
 }
 
 function print (s) { 
-    return function(t) { console.log("@",t,"=",s(t)); };
+    return function(t) { console.log("@",t,"=",s.stream(t)); };
 }
 
 var test = print(apply(function(x) { return x*2;},time));
@@ -199,61 +224,60 @@ function undef (x) {
 
 function rotate (nodes,s,cx,cy) { 
     var nodes = lift(nodes);
-    return function(t) { 
-	///console.log ("doing a rot");
+    var ls = lift(s);
+    var process_node = function(n,angle) { 
+	var x = undef(cx) ? n.x : cx;
+	var y = undef(cy) ? n.y : cy;
+	rotate_node(n.elt, angle, x, y);
+	return n;
+    }
 	
-	return nodes(t).map(function(n) {
-	    var x = undef(cx) ? n.x : cx;
-	    var y = undef(cy) ? n.y : cy;
-
-	    rotate_node(n.elt, lift(s)(t), x, y);
-	    return n;
-	});
-    };
+    ///console.log(nodes);
+    return mkBehavior(nodes.type,
+		      function(t) { 
+			  var angle = ls.stream(t);
+			  if (nodes.type==="scalar") {
+			      return process_node(nodes.stream(t),angle);
+			  } else {
+			      return nodes.stream(t).map(function(n) { return process_node(n,angle); });
+			  }
+		      });
 }
-
-/*	    
-	if (undef(cx)) {
-	    cx = n.x;
-	}
-	if (undef(cy)) { 
-	    cy = n.y;
-	}
-
-	rotate_nodes(ns.map(function(n) { return n.elt; }),lift(s)(t),cx,cy); 
-	return ns; }
-}
-*/
 
 // faster to skip the maps and construct this from scratch
 // with a one-node translate_node?
 //  (similar for rotate)
 
 function translate (nodes,x,y) { 
-    var nodes = lift(nodes);
-    return function(t) { 
-	var ns = nodes(t);
-	console.log("translate / ns =",ns);
-	translate_nodes(ns,   //lift(node)(t).elt,
-			lift(x)(t),
-			lift(y)(t)); 
-	return ns;
-    }
+    var lnodes = lift(nodes);
+    var lx = lift(x);
+    var ly = lift(y);
+	
+    return mkBehavior(nodes.type,
+		      function(t) { 
+			  var dx = lx.stream(t);
+			  var dy = ly.stream(t);
+			  var ns = lnodes.stream(t);
+			  if (lnodes.type==="scalar") {
+			      translate_node(ns.elt,dx,dy);
+			      return ns;
+			  } else {
+			      ns.forEach(function(n) { return translate_node(n.elt,dx,dy); });
+			      return ns;
+			  }
+		      });
 }
 
-function wiggle (t) { 
-    return Math.sin(t);
-}
-
-function waggle (t) { 
-    return Math.cos(t);
-}
+var wiggle = mkBehavior("scalar", function (t) { return Math.sin(t); });
+var waggle = mkBehavior("scalar", function (t) { return Math.cos(t); });
 
 function element (id,orig_x,orig_y) { 
     var e = document.getElementById(id);
-    return function(t) { return {elt:e, x:orig_x, y:orig_y};  }
+    return mkBehavior("scalar",function(t) { return {elt:e, x:orig_x, y:orig_y};  });
 }
 
+
+// FIXME
 function threshold (s1,thres,s2) {
     return function(t) { 
 	if (t<thres) {
@@ -268,48 +292,61 @@ function threshold (s1,thres,s2) {
 // invariant: every behavior is a function that returns a value of the 
 // appropriate shape (based on the constructor's inputs)
 
-function overlap () {
+function overlay () {
     var args = [];
 
     for (var i=0; i<arguments.length; i++) {
+	///console.log("argument",i,"=",arguments[i]);
 	args.push(lift(arguments[i]));
     }
 
-    console.log(args);
+    ///console.log(args);
     
-    return function(t) { 
-	return args.map(function(s) { return s(t); });
-/*	var results = [];
+    temp =  mkBehavior("array",
+		      function(t) { 
+			  ///console.log("OVERLAY");
+			  ///console.log("args=",args);
+			  ///console.log("args[0].stream(t)=",args[0].stream(t));
+			  var result = args.map(function(s) { return s.stream(t); });
+			  ///console.log(result);
+			  return result;
+			  /*	var results = [];
 	args.forEach(function(s,i) { results[i]=s(t); });
 	///console.log(results);
 	return results; */
-    }
+		      });
+
+    return temp;
 }
 
 
 function delay (d,s) { 
-    return function(t) { 
-	if (t < d) {
-	    return;
-	}
-	return s(t-d);
-    }
+    var ls = lift(s)
+    return mkBehavior(ls.type,
+		      function(t) { 
+			  if (t < d) {
+			      return;
+			  }
+			  return ls.stream(t-d);
+		      });
 }
 
 
 function rampTo (n,d) { 
-    return function(t) { 
-	if (t<d) { 
-	    return (n*t/d);
-	}
-	return n;
-    }
+    return mkBehavior("scalar",
+		      function(t) { 
+			  if (t<d) { 
+			      return (n*t/d);
+			  }
+			  return n;
+		      });
 }
-	
+
 
 function spin (e,s) {
     return faster(s,rotate(e,deg));
 }
+
 
 // invariant: 
 //  time is always local to a behavior
@@ -337,9 +374,9 @@ function run () {
 		       mult(rampTo(100,1000),faster(0.005,wiggle)),
 		       mult(rampTo(100,1000),faster(0.005,waggle)));
 
-    var t = overlap(delay(1000,circR1),rotR2);
+    var t = overlay(delay(1000,circR1),rotR2);
 
-    t = overlap(t,rotate(translate(spin(element("r3",500,250),1),
+    t = overlay(t,rotate(translate(spin(element("r3",500,250),1),
 			 faster(0.003,mult(200,wiggle)),
 			 faster(0.003,mult(50,waggle))),
 		   faster(0.005,deg),
@@ -351,43 +388,64 @@ function run () {
 				       mult(25,wiggle),
 				       mult(60,waggle)));
 
-//    var orbit = overlap(orbit1, orbit2);
+//    var orbit = overlay(orbit1, orbit2);
 
     var pendulum = function(x) { return translate(x,faster(0.002,mult(200,wiggle)),0); }
 
-    t = overlap(rotate(pendulum(orbit1),faster(0.02,mult(-1,deg)),500,250),
+    t = overlay(rotate(pendulum(orbit1),faster(0.02,mult(-1,deg)),500,250),
 		rotate(pendulum(orbit2),faster(0.02,mult(-1,deg)),500,250));
 
-//    t = rotate(pendulum(overlap(orbit1,orbit2)),
+//    t = rotate(pendulum(overlay(orbit1,orbit2)),
 //	       faster(0.02,mult(-1,deg)),
 //	       500,250);
 
-//    t = pendulum(overlap(orbit1,orbit2));
+//    t = pendulum(overlay(orbit1,orbit2));
 
-//    t = pendulum(orbit2); // overlap(orbit1,orbit2);
+//    t = pendulum(orbit2); // overlay(orbit1,orbit2);
 			
 
 //    t = pendulum(element("c1",500,250));
-    t = rotate(element("r3",500,250),faster(1,deg));
+//    t = rotate(element("r3",500,250),faster(0.5,deg));
 
-    t = pendulum(overlap(t,orbit2))
+//    t = pendulum(overlay(t,orbit2))
 
-//    t = orbit2;
+//    t = pendulum(overlay(orbit1,orbit2));
 
-    animate(t) // ,6000);
+    // this doesn't work as advertised
+    // probably because the center of rotation is affected - maybe?
+    t = overlay(pendulum(rotate(pendulum(overlay(orbit1,
+						 orbit2)),
+				faster(0.02,mult(-1,deg)),
+				500,250)),
+				//add(500,faster(0.002,mult(200,wiggle))),250)),
+		pendulum(element("c3",500,250)));
 
+    // works
+    t = overlay(pendulum(rotate(faster(10,pendulum(element("c1",500,250))),
+				faster(0.03,deg),
+				500,250)),
+		pendulum(element("c3",500,250)));
+
+    t = faster(0.1,pendulum(overlay(rotate(faster(10,pendulum(element("c1",500,250))),
+				faster(0.3,deg),
+				500,250),
+				    element("c3",500,250))));
+				   
+    
+    animate(t)  // ,6000);
 }
       
     </script>
   </head>
   <body>
     <svg width="1000" height="500" style="border: 1px solid grey;">
-        <rect id="r1" x="200" y="200" height="100" width="100" fill="red" />
+<!--        <rect id="r1" x="200" y="200" height="100" width="100" fill="red" />
         <rect id="r2" x="700" y="200" height="100" width="100" fill="blue" />
-        <rect id="r3" x="450" y="230" width="100" height="40" fill="green" />
+        <rect id="r3" x="450" y="230" width="100" height="40" fill="green" /> -->
 
 	<circle id="c1" cx="500" cy="250" r="20" fill="grey" />
 	<circle id="c2" cx="500" cy="250" r="5" fill="black" />
+	<circle id="c3" cx="500" cy="250" r="200" fill="none" stroke="blue" />
     </svg>
 
   </body>
