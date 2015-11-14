@@ -14,6 +14,7 @@
    - record initial transform so that we can keep it around even 
      after we wipe everything out because of a new tag
    - implement scaling
+   - allow the ability to clone an SVG picture so that we can animate?
 
 */
 
