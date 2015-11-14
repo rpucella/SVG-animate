@@ -7,7 +7,7 @@
       
 
 
-window.addEventListener("load",run);
+window.addEventListener("load",setup_and_run);
 
 
 function mkBehavior (type,stream) {
@@ -348,6 +348,10 @@ function spin (e,s) {
 }
 
 
+function setup_and_run () { 
+    loadExternalSVG("smiley.svg","target_smiley",run);
+}
+
 // invariant: 
 //  time is always local to a behavior
 //  behavior always starts @ t = 0
@@ -426,14 +430,29 @@ function run () {
 				500,250)),
 		pendulum(element("c3",500,250)));
 
-    t = faster(0.1,pendulum(overlay(rotate(faster(10,pendulum(element("c1",500,250))),
+    t = faster(0.1,pendulum(overlay(rotate(faster(10,pendulum(element("smiley",500,250))),
 				faster(0.3,deg),
 				500,250),
-				    element("c3",500,250))));
+				    element("c3",10,10))));
 				   
     
     animate(t)  // ,6000);
 }
+
+
+
+function loadExternalSVG (file,target_id,f) { 
+
+    d3.html(file, function(d) {
+        console.log("loading svg", d);
+	var elt = document.getElementById(target_id);
+	elt.appendChild(d);
+	f();
+    });
+}
+
+
+
       
     </script>
   </head>
@@ -446,6 +465,7 @@ function run () {
 	<circle id="c1" cx="500" cy="250" r="20" fill="grey" />
 	<circle id="c2" cx="500" cy="250" r="5" fill="black" />
 	<circle id="c3" cx="500" cy="250" r="200" fill="none" stroke="blue" />
+        <g id="smiley"><g id="target_smiley" transform="translate(470,220) scale(3)"></g></g>
     </svg>
 
   </body>
