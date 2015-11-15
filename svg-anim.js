@@ -23,21 +23,26 @@ function mkBehavior (type,stream) {
     return {type:type, stream:stream};
 }
 
+function mkBaseBehavior (stream) {
+    return {type:"base", stream:stream};
+}
+
 function isBehavior (b) {
     return (typeof b === "object" && "type" in b && "stream" in b);
 }
 
 
-// types: scalar, array
+// types: base, overlay
 //    
 
-var time = mkBehavior("scalar",function(t) { return t; });
+var time = mkBaseBehavior(function(t) { return t; });
 
 
 function faster (r,s) {
     var ls = lift(s);
     var lr = lift(r);
-    return mkBehavior(ls.type,function (t) { return ls.stream(t * lr.stream(t)); });
+    return mkBehavior(ls.type,
+		      function (t) { return ls.stream(t * lr.stream(t)); });
 }
 
 
@@ -47,10 +52,10 @@ function slower (r,s) {
 
 
 // this will fail if 'v' is an array, but that's okay because that would be
-// cheating (faking an overlay with an array of scalars?)
+// cheating (faking an overlay with an array of bases?)
 
 function lift (v) { 
-  return isBehavior(v) ? v : mkBehavior("scalar",function(t) { return v; });
+  return isBehavior(v) ? v : mkBaseBehavior(function(t) { return v; });
 }
 
 
@@ -110,18 +115,18 @@ function translate_node (node,x,y) {
 function add (s1,s2) { 
     var ls1 = lift(s1);
     var ls2 = lift(s2);
-    return mkBehavior("scalar",function(t) { return ls1.stream(t) + ls2.stream(t); });
+    return mkBaseBehavior(function(t) { return ls1.stream(t) + ls2.stream(t); });
 }
 
 function mult (s1,s2) { 
     var ls1 = lift(s1);
     var ls2 = lift(s2);
-    return mkBehavior("scalar",function(t) { return ls1.stream(t) * ls2.stream(t); });
+    return mkBaseBehavior(function(t) { return ls1.stream(t) * ls2.stream(t); });
 }
 
 function apply (f,s) {
     var ls = lift(s);
-    return mkBehavior("scalar",function(t) { return f(ls.stream(t)); });
+    return mkBaseBehavior(function(t) { return f(ls.stream(t)); });
 }
 
 
@@ -212,7 +217,7 @@ function rotate (nodes,s,cx,cy) {
     return mkBehavior(nodes.type,
 		      function(t) { 
 			  var angle = ls.stream(t);
-			  if (nodes.type==="scalar") {
+			  if (nodes.type==="base") {
 			      return process_node(nodes.stream(t),angle);
 			  } else {
 			      return nodes.stream(t).map(function(n) { return process_node(n,angle); });
@@ -231,7 +236,7 @@ function translate (nodes,x,y) {
 			  var dx = lx.stream(t);
 			  var dy = ly.stream(t);
 			  var ns = lnodes.stream(t);
-			  if (lnodes.type==="scalar") {
+			  if (lnodes.type==="base") {
 			      translate_node(ns.elt,dx,dy);
 			      return ns;
 			  } else {
@@ -241,12 +246,12 @@ function translate (nodes,x,y) {
 		      });
 }
 
-var wiggle = mkBehavior("scalar", function (t) { return Math.sin(t); });
-var waggle = mkBehavior("scalar", function (t) { return Math.cos(t); });
+var wiggle = mkBaseBehavior( function (t) { return Math.sin(t); });
+var waggle = mkBaseBehavior( function (t) { return Math.cos(t); });
 
 function element (id,orig_x,orig_y) { 
     var e = document.getElementById(id);
-    return mkBehavior("scalar",function(t) { return {elt:e, x:orig_x, y:orig_y};  });
+    return mkBaseBehavior(function(t) { return {elt:e, x:orig_x, y:orig_y};  });
 }
 
 
@@ -273,7 +278,7 @@ function overlay () {
 
     ///console.log(args);
     
-    temp =  mkBehavior("array",
+    temp =  mkBehavior("overlay",
 		      function(t) { 
 			  return  args.map(function(s) { return s.stream(t); });
 		      });
@@ -297,13 +302,12 @@ function delay (d,s) {
 // generalize this
 
 function rampTo (n,d) { 
-    return mkBehavior("scalar",
-		      function(t) { 
-			  if (t<d) { 
-			      return (n*t/d);
-			  }
-			  return n;
-		      });
+    return mkBaseBehavior(function(t) { 
+	if (t<d) { 
+	    return (n*t/d);
+	}
+	return n;
+    });
 }
 
 
