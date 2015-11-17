@@ -14,16 +14,20 @@ function setup_and_run () {
 }
 
 
-function spin (b,cx,cy) {
-    return rotate(b,faster(0.2,deg),cx,cy);
+function spin (b,cx,cy,speed) {
+    return rotate(b,faster(speed,deg),cx,cy);
 }
 
 function rev_spin (b,cx,cy) {
-    return rotate(b,faster(0.2,mult(-1,deg)),cx,cy);
+    return rotate(b,mult(-1,deg),cx,cy);
 }
 
 function orbit (b,w,h) {
-    return translate(b,slower(100,mult(w,wiggle)), slower(100,mult(h,waggle)));
+    return translate(b,mult(w,wiggle), mult(h,waggle));
+}
+
+function pulse (b) {
+    return scale(b,add(0.5,mult(0.5,waggle)));
 }
 
 

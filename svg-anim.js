@@ -98,6 +98,19 @@ function rotate_node (node,deg,rx,ry) {
 }
 
 
+function scale_node (node,fact,rx,ry) {
+    ///console.log(node,deg,rx,ry);
+    var s = d3.select(node);
+    if (s.property("svg-animation-tag") != tag) {
+	s.property("svg-animation-tag",tag);
+	s.attr("transform","translate(%,%) scale(%)".fmt(-rx*(fact-1), -ry*(fact-1), fact));
+    } else {
+	var t = s.attr("transform")
+	s.attr("transform","translate(%,%) scale(%) %".fmt(-rx*(fact-1), -ry*(fact-1), fact,t));
+    }
+}
+
+
 function translate_node (node,x,y) {
     var s = d3.select(node);
     if (+s.property("svg-animation-tag") !== tag) {
@@ -193,7 +206,7 @@ function print (s) {
     return function(t) { console.log("@",t,"=",s.stream(t)); };
 }
 
-var deg = apply(function(x) { return x % 360; },time);
+var deg = mkBaseBehavior(function(t) { return (t * 0.36) % 360; });
 
 function undef (x) { 
     return typeof x === "undefined";
@@ -226,6 +239,31 @@ function rotate (nodes,s,cx,cy) {
 }
 
 
+
+
+function scale (nodes,f,cx,cy) { 
+    var nodes = lift(nodes);
+    var lf = lift(f);
+    var process_node = function(n,fact) { 
+	var x = undef(cx) ? n.x : cx;
+	var y = undef(cy) ? n.y : cy;
+	scale_node(n.elt, fact, x, y);
+	return n;
+    }
+	
+    ///console.log(nodes);
+    return mkBehavior(nodes.type,
+		      function(t) { 
+			  var fact = lf.stream(t);
+			  if (nodes.type==="base") {
+			      return process_node(nodes.stream(t),fact);
+			  } else {
+			      return nodes.stream(t).map(function(n) { return process_node(n,fact); });
+			  }
+		      });
+}
+
+
 function translate (nodes,x,y) { 
     var lnodes = lift(nodes);
     var lx = lift(x);
@@ -246,8 +284,9 @@ function translate (nodes,x,y) {
 		      });
 }
 
-var wiggle = mkBaseBehavior( function (t) { return Math.sin(t); });
-var waggle = mkBaseBehavior( function (t) { return Math.cos(t); });
+
+var wiggle = mkBaseBehavior( function (t) { return Math.sin(Math.PI * 0.002 * t); });
+var waggle = mkBaseBehavior( function (t) { return Math.cos(Math.PI * 0.002 * t); });
 
 function element (id,orig_x,orig_y) { 
     var e = document.getElementById(id);
