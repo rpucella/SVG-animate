@@ -1,0 +1,64 @@
+<html>
+  <head>
+
+    <meta charset="UTF-8">
+
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+
+    <script src="svg-anim.js" charset="utf-8"></script>
+
+    <script>
+
+window.addEventListener("load",run);
+
+function spin (b,cx,cy,speed) {
+    return rotate(b,faster(speed,deg),cx,cy);
+}
+
+function rev_spin (b,cx,cy) {
+    return rotate(b,mult(-1,deg),cx,cy);
+}
+
+function orbit (b,w,h) {
+    return translate(b,mult(w,wiggle), mult(h,waggle));
+}
+
+function pulse (b) {
+    return scale(b,add(0.5,mult(0.5,waggle)));
+}
+
+
+function run () { 
+
+    console.log("Ready to animate");
+
+    var red = element("red",300,300);
+    var blue = element("blue",300,300);
+    
+    var combo = spin(overlay(pulse(blue),
+				   orbit(red,200,100)),
+		     300,300,0.05);
+
+    animate(combo);
+
+    return;
+}
+
+
+      
+    </script>
+
+  </head>
+
+  <body>
+
+    <svg width="600" height="600" style="border: 1px solid grey;">
+
+        <circle id="red" cx="300" cy="300" r="10" fill="red" />
+
+	<rect id="blue" x="270" y="270" width="60" height="60" fill="blue" />
+
+    </svg>
+
+  </body>
+</html>
